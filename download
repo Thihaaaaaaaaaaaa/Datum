@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>DATUM — floorplan to form</title>
+<meta name="description" content="DATUM is a browser-based studio that turns 2D floorplans into 3D building models in real time. Draw walls, drop doors and windows, export GLB/OBJ.">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#efeadd;--paper-2:#e7e1d2;--white:#fbf9f2;--ink:#1b1a16;
+    --ink-soft:#5c5647;--line:#cbc4b0;--accent:#d2451f;--accent-deep:#a83515;--slate:#33495a;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;font-family:"Bricolage Grotesque",sans-serif;color:var(--ink);background:var(--paper);
+    background-image:linear-gradient(var(--line-soft,#dcd6c5) 1px,transparent 1px),linear-gradient(90deg,var(--line-soft,#dcd6c5) 1px,transparent 1px);
+    background-size:32px 32px;background-position:center;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+  .mono{font-family:"JetBrains Mono",monospace}
+  a{color:inherit}
+  .wrap{max-width:1120px;margin:0 auto;padding:0 28px}
+
+  /* nav */
+  nav{position:sticky;top:0;z-index:40;backdrop-filter:blur(6px);background:#efeaddcc;border-bottom:1px solid var(--ink)}
+  .navin{max-width:1120px;margin:0 auto;height:62px;display:flex;align-items:center;gap:14px;padding:0 28px}
+  .brand{display:flex;align-items:baseline;gap:10px;text-decoration:none;color:var(--ink)}
+  .brand b{font-weight:800;font-size:22px;letter-spacing:.16em}
+  .brand .dot{width:9px;height:9px;background:var(--accent);display:inline-block;border-radius:50%;transform:translateY(-2px)}
+  .brand small{font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:.22em;color:var(--ink-soft);text-transform:uppercase}
+  nav .grow{flex:1}
+  .navlink{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:.1em;text-transform:uppercase;text-decoration:none;color:var(--ink-soft);padding:8px 6px}
+  .navlink:hover{color:var(--ink)}
+  .btn{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;text-decoration:none;border:1px solid var(--accent-deep);background:var(--accent);color:#fff;padding:10px 16px;border-radius:3px;display:inline-flex;align-items:center;gap:8px;transition:.15s}
+  .btn:hover{background:var(--accent-deep);transform:translateY(-1px)}
+  .btn.outline{background:transparent;color:var(--ink);border-color:var(--ink)}
+  .btn.outline:hover{background:var(--ink);color:#fff}
+
+  /* hero */
+  .hero{padding:88px 0 64px;display:grid;grid-template-columns:1.05fr .95fr;gap:40px;align-items:center}
+  .eyebrow{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:.28em;text-transform:uppercase;color:var(--accent-deep);margin-bottom:22px}
+  h1{font-size:clamp(40px,6vw,72px);line-height:.98;font-weight:800;letter-spacing:-.02em;margin:0 0 22px}
+  h1 em{font-style:normal;color:var(--accent)}
+  .lede{font-size:18px;line-height:1.55;color:var(--ink-soft);max-width:30em;margin:0 0 30px}
+  .cta{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+  .specs{margin-top:34px;display:flex;gap:26px;flex-wrap:wrap}
+  .spec b{display:block;font-family:"JetBrains Mono",monospace;font-size:22px;color:var(--ink)}
+  .spec span{font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-soft)}
+
+  /* hero drawing */
+  .plate{background:var(--white);border:1px solid var(--ink);border-radius:5px;padding:22px;box-shadow:0 30px 60px -40px #1b1a1666;position:relative}
+  .plate .tag{position:absolute;top:12px;right:14px;font-family:"JetBrains Mono",monospace;font-size:9px;letter-spacing:.2em;color:var(--ink-soft);text-transform:uppercase}
+  svg.iso{width:100%;height:auto;display:block}
+  .iso path,.iso line,.iso polygon{stroke:var(--ink);stroke-width:1.4;fill:none;vector-effect:non-scaling-stroke}
+  .iso .accent{stroke:var(--accent);stroke-width:1.8}
+  .iso .face{fill:#f1ece0}
+  .iso .roof{fill:#e7e0cf}
+  .draw{stroke-dasharray:1400;stroke-dashoffset:1400;animation:draw 2.6s ease forwards}
+  .draw.d2{animation-delay:.5s}.draw.d3{animation-delay:1s}.draw.d4{animation-delay:1.4s}
+  @keyframes draw{to{stroke-dashoffset:0}}
+  @keyframes fadein{from{opacity:0}to{opacity:1}}
+  .fillfade{opacity:0;animation:fadein .8s ease forwards;animation-delay:1.9s}
+
+  /* sections */
+  section{padding:70px 0;border-top:1px solid var(--line)}
+  .kicker{font-family:"JetBrains Mono",monospace;font-size:11px;letter-spacing:.24em;text-transform:uppercase;color:var(--accent-deep);margin-bottom:14px}
+  h2{font-size:clamp(28px,3.5vw,40px);font-weight:800;letter-spacing:-.01em;margin:0 0 14px}
+  .sub{color:var(--ink-soft);font-size:16px;max-width:46em;line-height:1.55;margin:0 0 40px}
+  .cards{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+  .card{background:var(--white);border:1px solid var(--ink);border-radius:5px;padding:24px;transition:.18s}
+  .card:hover{transform:translateY(-3px);box-shadow:0 22px 40px -30px #1b1a1655}
+  .card .ic{width:34px;height:34px;border:1px solid var(--ink);border-radius:4px;display:flex;align-items:center;justify-content:center;margin-bottom:16px}
+  .card .ic svg{width:18px;height:18px}
+  .card h3{margin:0 0 8px;font-size:18px;font-weight:700}
+  .card p{margin:0;color:var(--ink-soft);font-size:14px;line-height:1.55}
+  .num{font-family:"JetBrains Mono",monospace;font-size:11px;color:var(--accent-deep);float:right}
+
+  /* pipeline */
+  .flow{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border:1px solid var(--ink);border-radius:5px;overflow:hidden;background:var(--white)}
+  .step{padding:26px 22px;border-right:1px solid var(--line);position:relative}
+  .step:last-child{border-right:none}
+  .step .n{font-family:"JetBrains Mono",monospace;font-size:11px;color:var(--accent);letter-spacing:.2em}
+  .step h4{margin:10px 0 8px;font-size:16px}
+  .step p{margin:0;color:var(--ink-soft);font-size:13px;line-height:1.5}
+  .pillrow{display:flex;flex-wrap:wrap;gap:8px;margin-top:30px}
+  .pill{font-family:"JetBrains Mono",monospace;font-size:10px;letter-spacing:.06em;text-transform:uppercase;border:1px solid var(--line);background:var(--white);padding:7px 12px;border-radius:20px;color:var(--ink-soft)}
+
+  .closer{text-align:center;padding:90px 0}
+  .closer h2{font-size:clamp(30px,4.5vw,52px)}
+  footer{border-top:1px solid var(--ink);padding:30px 0;background:var(--paper-2)}
+  .foot{display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap;align-items:center;font-size:12px;color:var(--ink-soft);font-family:"JetBrains Mono",monospace}
+
+  @media(max-width:880px){
+    .hero{grid-template-columns:1fr;padding:54px 0 30px}
+    .cards{grid-template-columns:1fr}
+    .flow{grid-template-columns:1fr;border-radius:5px}
+    .step{border-right:none;border-bottom:1px solid var(--line)}
+    .step:last-child{border-bottom:none}
+    .plate{order:-1}
+  }
+  .rise{opacity:0;transform:translateY(10px);animation:rise .6s cubic-bezier(.2,.8,.2,1) forwards}
+  @keyframes rise{to{opacity:1;transform:translateY(0)}}
+</style>
+</head>
+<body>
+<nav>
+  <div class="navin">
+    <a class="brand" href="/"><b>DATUM</b><span class="dot"></span><small>floorplan → form</small></a>
+    <div class="grow"></div>
+    <a class="navlink" href="#how">How it works</a>
+    <a class="navlink" href="#pipeline">Pipeline</a>
+    <a class="btn" href="/app">Launch studio →</a>
+  </div>
+</nav>
+
+<header class="wrap hero">
+  <div>
+    <div class="eyebrow rise">A drawing tool that thinks in three dimensions</div>
+    <h1 class="rise" style="animation-delay:.05s">Draw the plan.<br><em>Watch it stand up.</em></h1>
+    <p class="lede rise" style="animation-delay:.1s">DATUM turns a 2D floorplan into a 3D building model the moment you draw it. Lay walls on a snapping grid, cut in doors and windows, and export clean <span class="mono">GLB</span> / <span class="mono">OBJ</span> straight into Blender, Assimp, or any BIM pipeline.</p>
+    <div class="cta rise" style="animation-delay:.15s">
+      <a class="btn" href="/app">Launch studio →</a>
+      <a class="btn outline" href="#how">See how it works</a>
+    </div>
+    <div class="specs rise" style="animation-delay:.2s">
+      <div class="spec"><b>2D → 3D</b><span>Real time</span></div>
+      <div class="spec"><b>GLB · OBJ</b><span>Clean export</span></div>
+      <div class="spec"><b>0</b><span>Install · runs in browser</span></div>
+    </div>
+  </div>
+
+  <div class="plate rise" style="animation-delay:.1s">
+    <span class="tag">AXONOMETRIC · 1:50</span>
+    <svg class="iso" viewBox="0 0 420 320" xmlns="http://www.w3.org/2000/svg">
+      <!-- ground guides -->
+      <line class="draw" x1="20" y1="250" x2="210" y2="300"/>
+      <line class="draw d2" x1="210" y1="300" x2="400" y2="250"/>
+      <!-- footprint -->
+      <polygon class="face fillfade" points="60,210 210,260 360,210 210,160"/>
+      <!-- walls (extruded) -->
+      <path class="draw d2" d="M60,210 L60,120 L210,70 L210,160"/>
+      <path class="draw d3" d="M210,160 L210,70 L360,120 L360,210"/>
+      <path class="draw d3" d="M60,120 L210,70 L360,120"/>
+      <path class="draw d2" d="M60,210 L210,260 L360,210"/>
+      <!-- roof -->
+      <polygon class="roof fillfade" points="60,120 210,70 360,120 210,170"/>
+      <!-- door + windows accent -->
+      <path class="accent draw d4" d="M150,232 L150,182 L180,168 L180,218 Z"/>
+      <path class="accent draw d4" d="M250,150 L250,120 L290,135 L290,165 Z"/>
+    </svg>
+  </div>
+</header>
+
+<section id="how" class="wrap">
+  <div class="kicker rise">01 — The loop</div>
+  <h2 class="rise" style="animation-delay:.05s">Three moves, one model</h2>
+  <p class="sub rise" style="animation-delay:.1s">No menus to learn. The plan on the left and the form on the right are the same building — touch one and the other updates instantly.</p>
+  <div class="cards">
+    <div class="card rise" style="animation-delay:.12s"><span class="num">01</span>
+      <div class="ic"><svg viewBox="0 0 24 24" fill="none"><path d="M3 18 9 6 15 14 21 5" stroke="#1b1a16" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <h3>Draw the walls</h3><p>Click points on a snapping grid. Live dimensions follow your cursor; close a loop and the room reports its area automatically.</p></div>
+    <div class="card rise" style="animation-delay:.18s"><span class="num">02</span>
+      <div class="ic"><svg viewBox="0 0 24 24" fill="none"><rect x="4" y="6" width="16" height="12" stroke="#1b1a16" stroke-width="2"/><path d="M12 6v12M4 12h16" stroke="#1b1a16" stroke-width="1.4"/></svg></div>
+      <h3>Open it up</h3><p>Drop doors and windows onto any wall. Doors cut full-height openings with a swing arc; windows sit between a real sill and head.</p></div>
+    <div class="card rise" style="animation-delay:.24s"><span class="num">03</span>
+      <div class="ic"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3v12m0 0 4-4m-4 4-4-4" stroke="#1b1a16" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 20h14" stroke="#1b1a16" stroke-width="2" stroke-linecap="round"/></svg></div>
+      <h3>Export the form</h3><p>Walls extrude, rooms get floor slabs and optional roofs. Download GLB or OBJ — optionally stripped to pure geometry.</p></div>
+  </div>
+</section>
+
+<section id="pipeline" class="wrap">
+  <div class="kicker rise">02 — Where it goes next</div>
+  <h2 class="rise" style="animation-delay:.05s">A clean handoff, not a dead end</h2>
+  <p class="sub rise" style="animation-delay:.1s">DATUM owns the part that belongs in the browser — drawing and massing. Its export is the bridge to the heavier tools that need a desktop or a GPU.</p>
+  <div class="flow rise" style="animation-delay:.12s">
+    <div class="step"><div class="n">A</div><h4>Sketch</h4><p>Floorplan drawn here, in the browser, on any machine.</p></div>
+    <div class="step"><div class="n">B</div><h4>Massing</h4><p>Walls, openings, slabs and roofs generated live in 3D.</p></div>
+    <div class="step"><div class="n">C</div><h4>Export</h4><p>GLB / OBJ geometry, your design, no watermark.</p></div>
+    <div class="step"><div class="n">D</div><h4>Refine</h4><p>Into Blender, Assimp, or IFC for detailing and BIM.</p></div>
+  </div>
+  <div class="pillrow rise" style="animation-delay:.16s">
+    <span class="pill">GLB → Blender</span>
+    <span class="pill">OBJ → Assimp → FBX / STL</span>
+    <span class="pill">→ Building Tools</span>
+    <span class="pill">→ Geometry Nodes</span>
+    <span class="pill">→ IFC.js / BIM</span>
+    <span class="pill">JSON plans save & reopen</span>
+  </div>
+</section>
+
+<section class="closer wrap">
+  <div class="kicker rise">Ready when you are</div>
+  <h2 class="rise" style="animation-delay:.05s">Open the studio and draw a room.</h2>
+  <p class="sub rise" style="margin:14px auto 28px;animation-delay:.1s">It loads a sample apartment so you can orbit the model in three seconds flat.</p>
+  <a class="btn rise" style="animation-delay:.15s" href="/app">Launch DATUM studio →</a>
+</section>
+
+<footer>
+  <div class="wrap foot">
+    <span>DATUM · floorplan → form</span>
+    <span>Built with Three.js (MIT) · your geometry, your copyright · runs entirely client-side</span>
+  </div>
+</footer>
+</body>
+</html>
